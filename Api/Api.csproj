@@ -7,11 +7,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--To authenticate user using JWT Bearer-->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.36" />
+    <!--to be able to derive from IdentityDBContext inside our context.cs-->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.36" />
+    <!--to be able to communicate with sql server via EF-->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.36" />
+    <!--to be able to add/remove migration our SQL Server-->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.36">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Controllers\" />
+    <!--to be able to create, serialize and validate JSON web tokens-->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.36.0" />
   </ItemGroup>
 
 </Project>
