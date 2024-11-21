@@ -1,14 +1,20 @@
+using Api;
 using Api.Data;
 using Api.Models;
 using Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Linq;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +34,21 @@ builder.Services.AddDbContext<Context>(options =>
 
 // be able to inject JWT service class inside the Controllers
 builder.Services.AddScoped<JWTService>();
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<ContextSeedService>();
+
+//newly add to cater role management
+//builder.Services.AddScoped<RoleManagementService>();
+//builder.Services.AddTransient<DatabaseSeeder>();
+
+// Add User Secrets
+builder.Configuration.AddUserSecrets<Program>();
+
+var configuration = builder.Configuration;
+
+// Access the secrets
+var mailjetApiKey = configuration["Mailjet:ApiKey"];
+var mailjetSecretKey = configuration["Mailjet:SecretKey"];
 
 // defining our IdentityCore Service
 builder.Services.AddIdentityCore<User>(options =>
@@ -68,10 +89,57 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     };
   });
 
+builder.Services.AddCors();
+
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+  options.InvalidModelStateResponseFactory = actionContext =>
+  {
+    var errors = actionContext.ModelState
+    .Where(x => x.Value.Errors.Count > 0)
+    .SelectMany(x => x.Value.Errors)
+    .Select(x => x.ErrorMessage).ToArray();
+
+    var toReturn = new
+    {
+      Errors = errors
+    };
+
+    return new BadRequestObjectResult(toReturn);
+  };
+});
+
+//Roles policy
+builder.Services.AddAuthorization(opt =>
+{
+  opt.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
+  opt.AddPolicy("ManagerPolicy", policy => policy.RequireRole("Manager"));
+  opt.AddPolicy("PlayerPolicy", policy => policy.RequireRole("User"));
+
+  //multiple role for admin and manager
+  opt.AddPolicy("AdminOrManagerPolicy", policy => policy.RequireRole("Admin", "Manager"));
+  //can be access for those who have admin and manager policy
+  opt.AddPolicy("AdminAndManagerPolicy", policy => policy.RequireRole("Admin").RequireRole("Manager"));
+  //all role policy
+  opt.AddPolicy("AllRolePolicy", policy => policy.RequireRole("Admin", "Manager", "User"));
+
+  opt.AddPolicy("AdminEmailPolicy", policy => policy.RequireClaim(ClaimTypes.Email, SD.AdminUserName));
+  opt.AddPolicy("GuadaSurnamePolicy", policy => policy.RequireClaim(ClaimTypes.Surname, "guada"));
+  opt.AddPolicy("ManagerEmailAndGuadaSurnamePolicy", policy => policy.RequireClaim(ClaimTypes.Surname, "guada")
+      .RequireClaim(ClaimTypes.Email, "manager@sample.com"));
+  opt.AddPolicy("VIPPolicy", policy => policy.RequireAssertion(context => SD.VIPPolicy(context)));
+});
+
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+
+app.UseCors(opt =>
+{
+  opt.AllowAnyHeader().AllowAnyMethod().AllowCredentials().WithOrigins(builder.Configuration["JWT:ClientUrl"]);
+});
+
 if (app.Environment.IsDevelopment())
 {
   app.UseSwagger();
@@ -87,5 +155,24 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+#region ContextSeed
+// insert service to program.cs
+
+using var scope = app.Services.CreateScope(); //service scope
+
+try
+{
+  var contextSeedService = scope.ServiceProvider.GetService<ContextSeedService>();
+  await contextSeedService.InitializeContextAsync(); // call this method " InitializeContextAsync() "
+}
+catch (Exception ex)
+{
+  var logger = scope.ServiceProvider.GetService<ILogger<Program>>();
+  //logger.LogError(ex.Message, "Failed to initialize and seed the database.");
+  logger.LogError("Failed to initialize and seed the database. Exception: {0}", ex.Message);
+
+}
+#endregion 
 
 app.Run();
