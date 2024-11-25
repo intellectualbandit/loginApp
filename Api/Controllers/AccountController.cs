@@ -47,7 +47,32 @@ namespace Api.Controllers
       if (user.EmailConfirmed == false) return Unauthorized("Please, confirm your email.");
 
       var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-      if (!result.Succeeded) return Unauthorized("Invalid username or password");
+      if (result.IsLockedOut)
+      {
+        return Unauthorized(string.Format("Your account has been locked. You should wait until {0} (UTC time) to be able to login.", user.LockoutEnd));
+      }
+
+      if (!result.Succeeded)
+      {
+        // User has input an invalid  password
+        if (!user.UserName.Equals(SD.AdminUserName))
+        {
+          // incrementing AccessFailedAccount of the AspNetUser by 1
+          await _userManager.AccessFailedAsync(user);
+        }
+        // check count user failed count if more than maximum attempts
+        if (user.AccessFailedCount >= SD.MaximumLoginAttempts)
+        {
+          // Lock the user for one day
+          await _userManager.SetLockoutEndDateAsync(user, DateTime.UtcNow.AddDays(1));
+          return Unauthorized(string.Format("Your account has been locked. You should wait until {0} (UTC time) to be able to login.", user.LockoutEnd));
+        }
+
+        return Unauthorized("Invalid username or password.");
+      }
+
+      await _userManager.ResetAccessFailedCountAsync(user);
+      await _userManager.SetLockoutEndDateAsync(user, null);
 
       return await CreateApplicationUserDto(user);
 
@@ -90,8 +115,8 @@ namespace Api.Controllers
 
       if (!result.Succeeded) return BadRequest(result.Errors);
 
-      //add default user role new registered user , default is Player Role
-      //await _userManager.AddToRoleAsync(userToAdd, SD.PlayerRole);
+      //add default user role new registered user , default is User Role
+      await _userManager.AddToRoleAsync(userToAdd, SD.UserRole);
 
       try
       {
