@@ -16,6 +16,16 @@ namespace Api
     public const string SuperUserRole = "SuperUser";
     public const string UserRole = "User";
 
+    //Modular Roles
+    public const string Sales = "Sales";
+    public const string Procurement = "Procurement";
+    public const string Inventory = "Inventory";
+    public const string HRIS = "HRIS";
+    public const string Manufacturing = "Manufacturing";
+    public const string Construction = "Construction";
+    public const string ProjectManagement = "ProjectManagement";
+    public const string Logistics = "Logistics";
+
     public const string AdminUserName = "admin@sample.com";
     public const string SuperAdminChangenNotAllowed = "Super Admin change is not allowed!";
     public const int MaximumLoginAttempts = 3;

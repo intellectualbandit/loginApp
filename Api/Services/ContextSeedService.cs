@@ -41,6 +41,15 @@ namespace Api.Services
         await _roleManager.CreateAsync(new IdentityRole { Name = SD.SuperAdminRole });
         await _roleManager.CreateAsync(new IdentityRole { Name = SD.SupervisorRole });
         await _roleManager.CreateAsync(new IdentityRole { Name = SD.SuperUserRole });
+
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.Sales });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.Procurement });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.Inventory });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.HRIS });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.Manufacturing });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.Construction });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.ProjectManagement });
+        await _roleManager.CreateAsync(new IdentityRole { Name = SD.Logistics });
       }
 
       if (!_userManager.Users.AnyAsync().GetAwaiter().GetResult())
